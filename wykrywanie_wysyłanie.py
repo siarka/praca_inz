@@ -5,6 +5,7 @@ import cv2 as cv
 from pupil_apriltags import Detector
 import numpy as np
 import socket
+import math
 
 # Parametry komunikacji UDP
 udp_host = "localhost"  # Adres docelowy hosta
@@ -28,6 +29,9 @@ def get_args():
 
     return args
 
+def prostok(a):
+    return math.sqrt(a*a+0.01)
+
 
 def det_tags(
     image,
@@ -36,12 +40,13 @@ def det_tags(
     pre_err,
     end_points
 ):
-    c_u = 320
-    c_v = 240
-    f = 1.93
+    c_u = 311.753418
+    c_v = 232.400955
+    f_x = 653.682312
+    f_y = 651.856018
     a = 4/3
-    stala_do_dl = 1/90
-
+    stala_do_dl_x = 0.0002*f_x
+    stala_do_dl_y = 0.0002*f_y
     corner_01 = (0, 0)
     corner_02 = (1, 1)
     corner_03 = (2, 2)
@@ -53,21 +58,23 @@ def det_tags(
     for tag in tags:
         corners = tag.corners
 
-        corner_01 = ((int(corners[0][0])-c_u)/(f*a), (int(corners[0][1])-c_v)/f)
-        corner_02 = ((int(corners[1][0])-c_u)/(f*a), (int(corners[1][1])-c_v)/f)
-        corner_03 = ((int(corners[2][0])-c_u)/(f*a), (int(corners[2][1])-c_v)/f)
-        corner_04 = ((int(corners[3][0])-c_u)/(f*a), (int(corners[3][1])-c_v)/f)
+        corner_01 = ((int(corners[0][0])-c_u)/(f_x*a), (int(corners[0][1])-c_v)/f_y)
+        corner_02 = ((int(corners[1][0])-c_u)/(f_x*a), (int(corners[1][1])-c_v)/f_y)
+        corner_03 = ((int(corners[2][0])-c_u)/(f_x*a), (int(corners[2][1])-c_v)/f_y)
+        corner_04 = ((int(corners[3][0])-c_u)/(f_x*a), (int(corners[3][1])-c_v)/f_y)
 
     z = np.array([
-        ((abs(corner_01[0]-corner_02[0])*stala_do_dl)+(abs(corner_01[1]-corner_04[1])*stala_do_dl))/2,
-        ((abs(corner_01[0]-corner_02[0])*stala_do_dl)+(abs(corner_02[1]-corner_03[1])*stala_do_dl))/2,
-        ((abs(corner_04[0]-corner_03[0])*stala_do_dl)+(abs(corner_02[1]-corner_03[1])*stala_do_dl))/2,
-        ((abs(corner_04[0]-corner_03[0])*stala_do_dl)+(abs(corner_01[1]-corner_04[1])*stala_do_dl))/2
+        (prostok(stala_do_dl_x/(abs(corner_01[0]-corner_02[0]))) + prostok(stala_do_dl_y/abs(corner_01[1]-corner_04[1]))) / 2,
+        (prostok(stala_do_dl_x/(abs(corner_01[0]-corner_02[0]))) + prostok(stala_do_dl_y/abs(corner_02[1]-corner_03[1]))) / 2,
+        (prostok(stala_do_dl_x/(abs(corner_04[0]-corner_03[0]))) + prostok(stala_do_dl_y/abs(corner_02[1]-corner_03[1]))) / 2,
+        (prostok(stala_do_dl_x/(abs(corner_04[0]-corner_03[0]))) + prostok(stala_do_dl_y/abs(corner_01[1]-corner_04[1]))) / 2
     ])
-
+    print(z)
     cur_points = np.array([corner_01[0], corner_01[1], corner_02[0], corner_02[1], corner_03[0], corner_03[1], corner_04[0], corner_04[1]])
 
     err = cur_points - end_points
+    #if (abs(err[0])+abs(err[1])+abs(err[2])+abs(err[3])+abs(err[4])+abs(err[5])+abs(err[6])+abs(err[7])) < 1:
+     #   err = np.array([0, 0, 0, 0, 0, 0, 0, 0])
 
     poch_err = (pre_err - err)/dt
 
@@ -117,9 +124,13 @@ def main():
     )
 
     dt = 1
-    f = 1.93
+    f_x = 653.682312
+    f_y = 651.856018
     a = 4/3
-    end_points = np.array([-80/(f*a), 60/f, 80/(f*a), 60/f, 80/(f*a), -60/f, -80/(f*a), -60/f])
+    c_u = 311.753418
+    c_v = 232.400955
+
+    end_points = np.array([(469-c_u)/(f_x*a), (112-c_v)/f_y, (116-c_u)/(f_x*a), (107-c_v)/f_y, (127-c_u)/(f_x*a), (443-c_v)/f_y, (456-c_u)/(f_x*a), (445-c_v)/f_y])
     pre_err = np.array([0, 0, 0, 0, 0, 0, 0, 0])
     while True:
         start_time = time.time()
