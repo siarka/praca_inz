@@ -29,6 +29,12 @@ def get_args():
 
     return args
 
+def oblicz_odleglosc(punkt1, punkt2):
+    x1, y1 = punkt1
+    x2, y2 = punkt2
+    odleglosc = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    return odleglosc
+
 def prostok(a):
     return math.sqrt(a*a+0.01)
 
@@ -45,58 +51,73 @@ def det_tags(
     f_x = 653.682312
     f_y = 651.856018
     a = 4/3
-    stala_do_dl_x = 0.0002*f_x
-    stala_do_dl_y = 0.0002*f_y
-    corner_01 = (0, 0)
-    corner_02 = (1, 1)
-    corner_03 = (2, 2)
-    corner_04 = (3, 3)
+    b = [0, 0, 0, 0]
+    stala_do_dl_x = 160*f_x
+    stala_do_dl_y = 160*f_y
     z = np.array([1, 1, 1, 1])
-
+    wykryte = False
     poch_err = np.array([0, 0, 0, 0, 0, 0, 0, 0])
 
     for tag in tags:
         corners = tag.corners
+        wykryte = True
+        corner_01 = (int(corners[0][0]), int(corners[0][1]))
+        corner_02 = (int(corners[1][0]), int(corners[1][1]))
+        corner_03 = (int(corners[2][0]), int(corners[2][1]))
+        corner_04 = (int(corners[3][0]), int(corners[3][1]))
 
-        corner_01 = ((int(corners[0][0])-c_u)/(f_x*a), (int(corners[0][1])-c_v)/f_y)
-        corner_02 = ((int(corners[1][0])-c_u)/(f_x*a), (int(corners[1][1])-c_v)/f_y)
-        corner_03 = ((int(corners[2][0])-c_u)/(f_x*a), (int(corners[2][1])-c_v)/f_y)
-        corner_04 = ((int(corners[3][0])-c_u)/(f_x*a), (int(corners[3][1])-c_v)/f_y)
+    if wykryte:
+        print("zostały wykryte tagi")
+        b[0] = stala_do_dl_x / oblicz_odleglosc(corner_01, corner_02)
+        b[1] = stala_do_dl_y / oblicz_odleglosc(corner_03, corner_02)
+        b[2] = stala_do_dl_x / oblicz_odleglosc(corner_03, corner_04)
+        b[3] = stala_do_dl_y / oblicz_odleglosc(corner_01, corner_04)
 
-    z = np.array([
-        (prostok(stala_do_dl_x/(abs(corner_01[0]-corner_02[0]))) + prostok(stala_do_dl_y/abs(corner_01[1]-corner_04[1]))) / 2,
-        (prostok(stala_do_dl_x/(abs(corner_01[0]-corner_02[0]))) + prostok(stala_do_dl_y/abs(corner_02[1]-corner_03[1]))) / 2,
-        (prostok(stala_do_dl_x/(abs(corner_04[0]-corner_03[0]))) + prostok(stala_do_dl_y/abs(corner_02[1]-corner_03[1]))) / 2,
-        (prostok(stala_do_dl_x/(abs(corner_04[0]-corner_03[0]))) + prostok(stala_do_dl_y/abs(corner_01[1]-corner_04[1]))) / 2
-    ])
-    print(z)
-    cur_points = np.array([corner_01[0], corner_01[1], corner_02[0], corner_02[1], corner_03[0], corner_03[1], corner_04[0], corner_04[1]])
+        z[0] = (prostok(b[0]) + prostok(b[3])) / 2
+        z[1] = (prostok(b[0]) + prostok(b[1])) / 2
+        z[2] = (prostok(b[2]) + prostok(b[1])) / 2
+        z[3] = (prostok(b[2]) + prostok(b[3])) / 2
 
-    err = cur_points - end_points
-    #if (abs(err[0])+abs(err[1])+abs(err[2])+abs(err[3])+abs(err[4])+abs(err[5])+abs(err[6])+abs(err[7])) < 1:
-     #   err = np.array([0, 0, 0, 0, 0, 0, 0, 0])
+        cur_points = np.array([
+            (corner_01[0] - c_u) / (f_x * a), (corner_01[1] - c_v) / f_y,
+            (corner_02[0] - c_u) / (f_x * a), (corner_02[1] - c_v) / f_y,
+            (corner_03[0] - c_u) / (f_x * a), (corner_03[1] - c_v) / f_y,
+            (corner_04[0] - c_u) / (f_x * a), (corner_04[1] - c_v) / f_y
+        ])
 
-    poch_err = (pre_err - err)/dt
+        err = cur_points - end_points
+        #if (abs(err[0])+abs(err[1])+abs(err[2])+abs(err[3])+abs(err[4])+abs(err[5])+abs(err[6])+abs(err[7])) < 1:
+         #   err = np.array([0, 0, 0, 0, 0, 0, 0, 0])
 
-    L = np.array([
-        [-1/z[0], 0, corner_01[0]/z[0], corner_01[0]*corner_01[1], -1-(corner_01[0]*corner_01[0]), corner_01[1]],
-        [0, -1/z[0], corner_01[1]/z[0], 1+(corner_01[1]*corner_01[1]), -corner_01[0]*corner_01[1], -corner_01[0]],
-        [-1/z[1], 0, corner_02[0]/z[1], corner_02[0]*corner_02[1], -1-(corner_02[0]*corner_02[0]), corner_02[1]],
-        [0, -1/z[1], corner_02[1]/z[1], 1+(corner_02[1]*corner_02[1]), -corner_02[0]*corner_02[1], -corner_02[0]],
-        [-1/z[2], 0, corner_03[0]/z[2], corner_03[0]*corner_03[1], -1-(corner_03[0]*corner_03[0]), corner_03[1]],
-        [0, -1/z[2], corner_03[1]/z[2], 1+(corner_03[1]*corner_03[1]), -corner_03[0]*corner_03[1], -corner_03[0]],
-        [-1/z[3], 0, corner_04[0]/z[3], corner_04[0]*corner_04[1], -1-(corner_04[0]*corner_04[0]), corner_04[1]],
-        [0, -1/z[3], corner_04[1]/z[3], 1+(corner_04[1]*corner_04[1]), -corner_04[0]*corner_04[1], -corner_04[0]]
-    ])
+        poch_err = (pre_err - err)/dt
 
-    pi_L = np.linalg.pinv(L)
+        L = np.array([
+            [-1/z[0], 0, cur_points[0]/z[0], cur_points[0]*cur_points[1], -1-(cur_points[0]*cur_points[0]), cur_points[1]],
+            [0, -1/z[0], cur_points[1]/z[0], 1+(cur_points[1]*cur_points[1]), -cur_points[0]*cur_points[1], -cur_points[0]],
+            [-1/z[1], 0, cur_points[2]/z[1], cur_points[2]*cur_points[3], -1-(cur_points[2]*cur_points[2]), cur_points[3]],
+            [0, -1/z[1], cur_points[3]/z[1], 1+(cur_points[3]*cur_points[3]), -cur_points[2]*cur_points[3], -cur_points[2]],
+            [-1/z[2], 0, cur_points[4]/z[2], cur_points[4]*cur_points[5], -1-(cur_points[4]*cur_points[4]), cur_points[5]],
+            [0, -1/z[2], cur_points[5]/z[2], 1+(cur_points[5]*cur_points[5]), -cur_points[4]*cur_points[5], -cur_points[4]],
+            [-1/z[3], 0, cur_points[6]/z[3], cur_points[6]*cur_points[7], -1-(cur_points[6]*cur_points[6]), cur_points[7]],
+            [0, -1/z[3], cur_points[7]/z[3], 1+(cur_points[7]*cur_points[7]), -cur_points[6]*cur_points[7], -cur_points[6]]
+        ])
 
-    result = np.dot(pi_L, poch_err)
+        pi_L = np.linalg.pinv(L)
 
-    ster = f"{round(result[0])} {round(result[1])} {round(result[2])} {round(result[3])} {round(result[4])} {round(result[5])}"
+        result = np.dot(pi_L, poch_err)
+        result /= 1000
+        result = np.round(result, 4)
+
+    else:
+        err = np.array([0, 0, 0, 0, 0, 0, 0, 0])
+        print(" wymuszone 0 ")
+        result = np.array([0, 0, 0, 0, 0, 0])
+
+    ster = f"{result[0]} {result[1]} {result[2]} {result[3]} {result[4]} {result[5]}"
     # Wysyłanie do hosta i portu za pomocą protokołu UDP
     udp_socket.sendto(ster.encode(), (udp_host, udp_port))
-
+    print("sterowanie to :")
+    print(ster)
     return err
 
 
@@ -111,7 +132,7 @@ def main():
     decode_sharpening = args.decode_sharpening
     debug = args.debug
 
-    cap = cv.VideoCapture("ffmpeg_capture-duzy_640_15.mp4")
+    cap = cv.VideoCapture("recording-20231102095508.ts")
 
     at_detector = Detector(
         families=families,
@@ -130,7 +151,12 @@ def main():
     c_u = 311.753418
     c_v = 232.400955
 
-    end_points = np.array([(469-c_u)/(f_x*a), (112-c_v)/f_y, (116-c_u)/(f_x*a), (107-c_v)/f_y, (127-c_u)/(f_x*a), (443-c_v)/f_y, (456-c_u)/(f_x*a), (445-c_v)/f_y])
+    end_points = np.array([
+        (469-c_u)/(f_x*a), (112-c_v)/f_y,
+        (116-c_u)/(f_x*a), (107-c_v)/f_y,
+        (127-c_u)/(f_x*a), (443-c_v)/f_y,
+        (456-c_u)/(f_x*a), (445-c_v)/f_y
+    ])
     pre_err = np.array([0, 0, 0, 0, 0, 0, 0, 0])
     while True:
         start_time = time.time()
